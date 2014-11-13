@@ -1,28 +1,323 @@
 <!DOCTYPE html>
-<html lang="en">
-	<head>
-		<title>RadioWeb</title>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<meta http-equiv="X-UA-Compatible" content="IE=11" />
-		<link rel="shortcut icon" href="images/favicon.ico">
-		<style>
-			body { background-color: #555; margin:0; padding:0; overflow: hidden; }
-			@font-face { font-family: 'SourceCode'; src: url('assets/SourceCodePro.woff') format('woff');}
-			a { text-decoration:none; }
-		</style>
-	</head>
-	<body>
-		<script type="text/javascript" src="js/TinyRadio.js"></script>
-		<script type="text/javascript">
-        	var TinyRadio;
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>Shoutcast radio - js do it</title>
+<meta name="Description" content="" />
+<meta name="Keywords"  content="" />
 
-        	window.onload = init;
+<link rel="stylesheet" type="text/css" media="screen,print" href="style.css" />
+</head>
+<body>
+<!-- Copyright Lo-Th 2014 -->
+<div id="info"></div>
+<div id="list"></div>
+<div id="volume"><div id="volumeInner"></div></div>
+<canvas id="spectrogram"></canvas>
+<canvas id="c"></canvas>
+<audio id="audio"></audio>
+<div class="eq">
+  <div class="controls">
+    <label>Low Gain</label>
+    <input type="range" value="100" step="1" min="0" max="100" oninput="visualizer.changeGain(this.value, 'lowGain');"></input>
+  </div>
+  <div class="controls">
+    <label>Mid Gain</label>
+    <input type="range" value="100" step="1" min="0" max="100" oninput="visualizer.changeGain(this.value, 'midGain');"></input>
+  </div>
+  <div class="controls">
+    <label>High Gain</label>
+    <input type="range" value="100" step="1" min="0" max="100" oninput="visualizer.changeGain(this.value, 'highGain');"></input>
+  </div>
+  <div class="controls">
+    <label>Volume</label>
+    <input type="range" value="100" step="1" min="0" max="100" oninput="visualizer.changeGain(this.value, 'volume');"></input>
+  </div>
+</div>
+<script type="text/javascript">
+	var info = document.getElementById('info');
+	var list = document.getElementById('list');
 
-		    function init() {
-		    	TinyRadio = new TinyRadio();
-				document.body.appendChild( TinyRadio.domElement );
-            }
-		</script>
-	</body>
+	var visualizer;
+	window.onload = init;
+	function init(){
+	    visualizer = new SOUND.Visualizer();
+	}
+
+	var radioList = [
+	  {name:"flaresound", rate:56, url:"http://217.208.61.43:8000/flaresound"},
+	  {name:"Bassdrive", rate:128, url:"http://50.7.70.66:8200"},
+	  {name:"DnBHeaven", rate:128, url:"http://91.121.138.222:8000"},
+	  {name:"Plusuradio", rate:128, url:"http://46.165.204.135:8001"},
+	  {name:"DnNradio", rate:32, url:"http://88.198.34.209:10128"},
+	  {name:"Psychedelic", rate:192, url:"http://195.154.86.144:8002"}
+	];
+
+	var radio = [], n;
+
+	for(var i=0; i<radioList.length; i++){
+	  radio[i] = document.createElement( 'div' );
+	  radio[i].style.cssText = "height:20px; width:100px; border:2px solid #434343; position:relative; display:inline-block; background:#353535; margin: 2px 2px; padding: 5px 5px; cursor:pointer;";
+	  radio[i].innerHTML = radioList[i].name;
+	  radio[i].id = i;
+	  radio[i].addEventListener( 'mousedown', function ( event ) { event.preventDefault(); playSound(this.id); this.style.backgroundColor =  "#fd9916";}, false );
+	  radio[i].addEventListener( 'mouseover', function ( event ) { event.preventDefault(); this.style.backgroundColor = "#9d590e" }, false );
+	  radio[i].addEventListener( 'mouseout', function ( event ) { event.preventDefault();  this.style.backgroundColor = "#353535"; }, false ); 
+	  list.appendChild( radio[i] );
+	}
+
+	function playSound(N){
+	    n = N;
+	    visualizer.load(radioList[n].url+"/;");
+	}
+
+	var SOUND = {};
+
+	SOUND.Visualizer = function () {
+
+		this.context =  new (window.AudioContext || window.webkitAudioContext)();
+		this.init_BandFilter();
+		this.analyser = this.context.createAnalyser();
+	    //this.audio_url = null;
+	    this.w = 400;
+	    this.h = 260;
+	    this.inPlay = false;
+	    
+	    this.audio = null;
+	    //new AudioContext();
+	    
+	    
+	    //this.analyser = this.context.createAnalyser();
+	    this.canvas = document.getElementById("c");
+	    this.c_context = this.canvas.getContext("2d");
+
+	    this.canvas2 = document.getElementById("spectrogram");
+	    this.ctx2 = this.canvas2.getContext("2d");
+
+	    this.canvas.width = this.canvas_w = this.w;
+	    this.canvas.height = this.canvas_h = this.h;
+
+	    this.canvas2.width = this.w;
+	    this.canvas2.height = this.h;
+
+	    this.tempCanvas = document.createElement("canvas");
+		this.tempCanvas.width = this.w;
+		this.tempCanvas.height = this.h;
+		this.tempCtx = this.tempCanvas.getContext("2d");
+	    
+	    this.timer = null;
+	    this.data = null;
+
+
+	    
+	    /*this.hot = new chroma.ColorScale({
+	        colors:['#000000', '#ff0000', '#ffff00', '#ffffff'],
+	        positions:[0, .25, .75, 1],
+	        mode:'rgb',
+	        limits:[0, this.w]
+	    });*/
+	    
+	    //window.AudioContext = window.AudioContext || window.webkitAudioContext || window.MozAudioContext || window.oAudioContext || window.msAudioContext;
+	}
+
+	SOUND.Visualizer.prototype = {
+	    constructor: SOUND.Visualizer,
+	    load : function (url) {
+	    	var _this = this;
+	        if(this.inPlay)this.stop();
+
+	        this.audio = document.createElement("audio");//new Audio();
+	        this.audio.src = url;
+	        this.source = this.context.createMediaElementSource( this.audio );
+	        
+
+
+
+	        this.audio.onloadedmetadata = function(e) {
+
+	            
+	            _this.play();
+	        }
+	        
+	       
+	        //this.source = this.context.createMediaStreamSource( this.audio );
+	        //this.source = this.context.createBufferSource();
+	    },
+	    init_BandFilter : function () {
+	    	this.gainDb = 0;//-40;//-40.0;
+		    this.bandSplit = [1000,3600]//[360,3600];//
+
+		    this.volume = this.context.createBiquadFilter();
+            this.volume.type = "highshelf";
+            this.volume.frequency.value = 1000;
+            this.volume.gain.value = 0;
+
+		    //this.bandSplit = [1000,3600];
+	    	this.hBand = this.context.createBiquadFilter();
+			this.hBand.type = "lowshelf";
+			this.hBand.frequency.value = this.bandSplit[0];
+			this.hBand.gain.value = this.gainDb;
+
+			this.hInvert = this.context.createGain();
+			this.hInvert.gain.value = -1.0;
+
+			this.mBand = this.context.createGain();
+
+			this.lBand = this.context.createBiquadFilter();
+			this.lBand.type = "highshelf";
+			this.lBand.frequency.value = this.bandSplit[1];
+			this.lBand.gain.value = this.gainDb;
+
+			this.lInvert = this.context.createGain();
+			this.lInvert.gain.value = -1.0;
+	    },
+	    set_BandFilter : function () {
+
+			this.source.connect(this.lBand);
+			this.source.connect(this.mBand);
+			this.source.connect(this.hBand);
+
+			this.hBand.connect(this.hInvert);
+			this.lBand.connect(this.lInvert);
+
+			this.hInvert.connect(this.mBand);
+			this.lInvert.connect(this.mBand);
+
+			this.lGain = this.context.createGain();
+			this.mGain = this.context.createGain();
+			this.hGain = this.context.createGain();
+
+			this.lBand.connect(this.lGain);
+			this.mBand.connect(this.mGain);
+			this.hBand.connect(this.hGain);
+
+			this.sum = this.context.createGain();
+			this.lGain.connect(this.sum);
+			this.mGain.connect(this.sum);
+			this.hGain.connect(this.sum);
+			this.sum.connect(this.analyser);
+			//this.sum.connect(this.context.destination);
+
+			//this.source.connect(this.volume);
+			//this.volume.connect(this.context.destination);
+
+	    },
+	    changeGain : function (string,type) {
+	    	var value = parseFloat(string) / 100.0;
+	    	switch(type){
+			    case 'lowGain': this.lGain.gain.value = value; break;
+			    case 'midGain': this.mGain.gain.value = value; break;
+			    case 'highGain': this.hGain.gain.value = value; break;
+			    case 'volume': this.volume.gain.value = value; break;
+			}
+			//console.log(this.lGain.gain.value)
+	    },
+	   /* set_filter : function () {
+	        this.filter = this.context.createBiquadFilter();
+	        this.filter.type = 3;//0
+	        this.filter.frequency.value = 440;
+	        this.filter.Q.value = 0;
+	        this.filter.gain.value = 0;
+
+	        this.source.connect( this.filter );
+	        this.filter.connect( this.analyser ); 
+	    },*/
+	    play : function () {
+	    	
+	    	//this.init_BandFilter();
+	        
+	        this.source.connect( this.analyser );
+	        this.analyser.connect( this.context.destination );
+	        this.set_BandFilter();
+	        
+	        
+	        this.audio.play();
+	        var _this = this;
+	        this.data = new Uint8Array( this.analyser.frequencyBinCount );
+	        this.timer = setInterval(function() { _this.update(); }, 1000 / 60);
+	        this.inPlay=true;
+	    },
+	    stop :function() {
+	        this.audio.pause();
+	        this.audio.src = '';
+	        clearInterval(this.timer);
+	        this.c_context.clearRect( 0, 0, this.canvas_w, this.canvas_h );
+	        this.inPlay=false;
+	    },
+	    update : function () {
+	        this.c_context.clearRect( 0, 0, this.canvas_w, this.canvas_h );
+	        this.frequency_render();
+	        this.time_domain_render();
+	        this.spectrogram_render();
+	    },
+	    time_domain_render : function () {
+	        this.analyser.getByteTimeDomainData(this.data);
+	        this.c_context.beginPath();
+	        
+	        var i =  this.data.length;
+	        var max = i-1;
+	        
+	        while(i--){
+	            var val = this.data[i];
+	            var x = i * ( this.canvas_w / 1024 );
+	            var y = this.canvas_h - val;
+	            if( i == max ) this.c_context.moveTo(x,y);
+	            else this.c_context.lineTo(x,y);
+	            
+	        }
+	        this.c_context.strokeStyle = "red";
+	        this.c_context.stroke();
+	    },
+	    frequency_render : function () {
+	        this.analyser.getByteFrequencyData( this.data );
+	        this.c_context.beginPath();
+	        
+	        var i = this.data.length;
+	        var max = i-1;
+	        
+	        while(i--){
+	            var val = this.data[i];
+	            var x = i * ( this.canvas_w / 1024 );
+	            var y = this.canvas_h - val;
+	            if( i == max ) this.c_context.moveTo(x,y);
+	            else this.c_context.lineTo(x,y);
+	            
+	            //this.c_context.fillStyle = this.hot.getColor(val).hex();
+	            //this.c_context.fillRect(250 - 1, 400 - i, 1, 1);
+	        }
+
+	        this.c_context.strokeStyle = "lime";
+	        this.c_context.stroke();
+	    },
+	    spectrogram_render : function () {
+
+	    	//var canvas = document.getElementById("spectrogram");
+	    	this.tempCtx.drawImage(this.canvas2, 0, 0, this.canvas_w, this.canvas_h);
+
+	    	this.analyser.getByteFrequencyData( this.data );
+	        this.c_context.beginPath();
+	        var i = this.data.length;
+	        var max = i-1;
+	        
+	        while(i--){
+	            var val = this.data[i];//(this.data[i]*100)/255;;
+	            //var x = i * ( this.canvas_w / 1024 );
+	            //var y = this.canvas_h - val;
+	            
+	            if(val<100)this.ctx2.fillStyle = 'rgba('+0+','+0+','+val+', 1)';//'#'+val.toString(16);//this.hot.getColor(val).hex();
+	            else if(val<200)this.ctx2.fillStyle = 'rgba('+0+','+(val-100)+','+val+', 1)';
+	           // else if(val>255)this.ctx2.fillStyle = 'rgba('+0+','+val+','+0+', 1)';
+	            else this.ctx2.fillStyle = 'rgba('+(val-200)+','+val+','+val+', 1)';
+	            //this.ctx2.fillRect(250 - 1, 400 - i, 1, 1);
+	            this.ctx2.fillRect( this.canvas_w - 1,  this.canvas_h - i, 1, 1);
+	        }
+	        this.ctx2.translate(-1, 0);
+	        this.ctx2.drawImage( this.tempCanvas, 0, 0, this.canvas_w, this.canvas_h, 0, 0, this.canvas_w, this.canvas_h);
+	        // reset the transformation matrix
+            this.ctx2.setTransform(1, 0, 0, 1, 0, 0);
+
+	    }
+	}
+</script>
+</body>
 </html>
