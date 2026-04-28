@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+<header name = "Access-Control-Allow-Origin" value = "*" /> 
 <meta charset="UTF-8" />
 <title>Shoutcast radio - js do it</title>
 <meta name="Description" content="" />
@@ -99,7 +100,7 @@ function init(){
 
 function playSound(N){
     n = N;
-    visualizer.load(radioList[n].url);//+"/;"
+    visualizer.load(radioList[n].url+"");//+"/;"
 }
 
 var SOUND = {};
@@ -150,12 +151,14 @@ SOUND.Visualizer.prototype = {
         if(this.inPlay)this.stop();
 
         this.audio = document.createElement("audio");//new Audio();
-        this.audio.src = url;
-        this.audio.controls = true;
+        
+        this.audio.controls = false;
         this.audio.loop = true;
         this.audio.autoplay = true;
         this.audio.crossOrigin = "anonymous";
+        this.audio.src = url;
         this.source = this.context.createMediaElementSource( this.audio );
+        this.audio.play()
         
 
 
