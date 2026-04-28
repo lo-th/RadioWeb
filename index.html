@@ -151,7 +151,9 @@ SOUND.Visualizer.prototype = {
 
         this.audio = document.createElement("audio");//new Audio();
         this.audio.src = url;
-        this.audio.autoplay = "autoplay";
+        this.audio.controls = true;
+        this.audio.loop = true;
+        this.audio.autoplay = true;
         this.audio.crossOrigin = "anonymous";
         this.source = this.context.createMediaElementSource( this.audio );
         
