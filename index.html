@@ -59,9 +59,9 @@ var visualizer;
 var radioList = [
   {name:"Drumbase Space", rate:128, url:"https://radio.drumbase.space/listen/drumbase.space/radio.mp3"},
   {name:"Jungle Planet", rate:128, url:"https://phoebe.streamerr.co:3650/"},
-  {name:"radio liberty", rate:128, url:"https://hs1.radiolibertymp.ro/listen/lmpdrumandbass/stream.mp3"},
-  {name:"sunshine", rate:128, url:"https://stream.sunshine-live.de/dnb/mp3-192/stream.sunshine-live.de/play.m3u"},
-  {name:"technolovers", rate:128, url:"https://stream.technolovers.fm/drummnbass"},
+  {name:"Radio Liberty", rate:128, url:"https://hs1.radiolibertymp.ro/listen/lmpdrumandbass/stream.mp3"},
+  {name:"Sunshine", rate:128, url:"https://stream.sunshine-live.de/dnb/mp3-192/stream.sunshine-live.de/play.m3u"},
+  {name:"Technolovers", rate:128, url:"https://stream.technolovers.fm/drummnbass"},
   {name:"DnNradio", rate:128, url:"https://source.dnbradio.com/dnbradio_main.mp3"},
   {name:"gorilla fm", rate:128, url:"http://sc-gorillafm.1.fm:10018/"},
   {name:"celtic sounds", rate:128, url:"https://celtic-sounds.stream.laut.fm/celtic-sounds"},
@@ -152,6 +152,7 @@ SOUND.Visualizer.prototype = {
         this.audio = document.createElement("audio");//new Audio();
         this.audio.src = url;
         this.audio.autoplay = "autoplay";
+        this.audio.crossOrigin = "anonymous";
         this.source = this.context.createMediaElementSource( this.audio );
         
 
