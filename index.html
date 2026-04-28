@@ -65,7 +65,7 @@ var radioList = [
   {name:"DnNradio", rate:128, url:"https://source.dnbradio.com/dnbradio_main.mp3"},
   {name:"gorilla fm", rate:128, url:"http://sc-gorillafm.1.fm:10018/"},
   {name:"celtic sounds", rate:128, url:"https://celtic-sounds.stream.laut.fm/celtic-sounds"},
-  {name:"electric fabric", rate:128, url:"https://stream.laut.fm/electricfabric"}
+  {name:"karthigaifm", rate:128, url:"https://karthigaifm.radioca.st/streams/64kbps"}
 ];
 
 window.onload = init;
@@ -151,6 +151,7 @@ SOUND.Visualizer.prototype = {
 
         this.audio = document.createElement("audio");//new Audio();
         this.audio.src = url;
+        this.audio.autoplay = "autoplay";
         this.source = this.context.createMediaElementSource( this.audio );
         
 
